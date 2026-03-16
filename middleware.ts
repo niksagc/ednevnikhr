@@ -1,41 +1,68 @@
-import { createMiddlewareClient } from '@supabase/auth-helpers-nextjs';
-import { NextResponse } from 'next/server';
-import type { NextRequest } from 'next/server';
+import { createServerClient } from '@supabase/ssr'
+import { NextResponse, type NextRequest } from 'next/server'
 
-export async function middleware(req: NextRequest) {
-  const res = NextResponse.next();
-  const supabase = createMiddlewareClient({ req, res });
+export async function middleware(request: NextRequest) {
+  let response = NextResponse.next({
+    request: {
+      headers: request.headers,
+    },
+  })
 
-  const { data: { session } } = await supabase.auth.getSession();
+  const supabase = createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    {
+      cookies: {
+        getAll() {
+          return request.cookies.getAll()
+        },
+        setAll(cookiesToSet) {
+          cookiesToSet.forEach(({ name, value, options }) =>
+            request.cookies.set(name, value)
+          )
+          response = NextResponse.next({
+            request,
+          })
+          cookiesToSet.forEach(({ name, value, options }) =>
+            response.cookies.set(name, value, options)
+          )
+        },
+      },
+    }
+  )
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
 
   // 1. Ako nije prijavljen, preusmjeri na login (osim ako je već na login stranici)
-  if (!session && req.nextUrl.pathname !== '/') {
-    return NextResponse.redirect(new URL('/', req.url));
+  if (!user && request.nextUrl.pathname !== '/') {
+    return NextResponse.redirect(new URL('/', request.url))
   }
 
   // 2. Ako je prijavljen, provjeri ulogu
-  if (session) {
+  if (user) {
     const { data: profile } = await supabase
       .from('profiles')
       .select('role')
-      .eq('id', session.user.id)
+      .eq('id', user.id)
       .single();
 
     const role = profile?.role;
-    const path = req.nextUrl.pathname;
+    const path = request.nextUrl.pathname;
 
     // Logika zaštite: Ako pokušava ući u admin, a nije admin -> preusmjeri ga na njegov dashboard
     if (path.startsWith('/admin') && role !== 'admin') {
-      return NextResponse.redirect(new URL(`/${role || 'student'}`, req.url));
+      return NextResponse.redirect(new URL(`/${role || 'student'}`, request.url));
     }
     
     // Dodajte ovdje slične provjere za /teacher, /student, /parent...
     if (path.startsWith('/teacher') && role !== 'teacher') {
-      return NextResponse.redirect(new URL(`/${role || 'student'}`, req.url));
+      return NextResponse.redirect(new URL(`/${role || 'student'}`, request.url));
     }
   }
 
-  return res;
+  return response
 }
 
 // Koje stranice middleware "prati"
