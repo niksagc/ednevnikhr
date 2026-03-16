@@ -13,8 +13,12 @@ export default function CreateUserPage() {
       method: 'POST',
       body: JSON.stringify({ email, password, full_name: fullName, role }),
     });
-    if (res.ok) alert('Korisnik kreiran!');
-    else alert('Greška!');
+    const data = await res.json();
+    if (res.ok) {
+      alert('Korisnik kreiran!');
+    } else {
+      alert('Greška: ' + (data.error || 'Nepoznata greška'));
+    }
   };
 
   return (
