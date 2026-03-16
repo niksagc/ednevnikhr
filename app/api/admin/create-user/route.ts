@@ -1,12 +1,10 @@
-import { createClient } from '@/lib/supabaseClient';
+import { supabase } from '@/lib/supabaseClient';
 import { NextResponse } from 'next/server';
 
 export async function POST(request: Request) {
   try {
     const { email, password, full_name, role } = await request.json();
     console.log('API: Creating user', { email, full_name, role });
-
-    const supabase = createClient();
 
     // 1. Create the user in Supabase Auth
     const { data: authData, error: authError } = await supabase.auth.signUp({
