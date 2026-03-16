@@ -56,8 +56,15 @@ export async function middleware(request: NextRequest) {
       return NextResponse.redirect(new URL(`/${role || 'student'}`, request.url));
     }
     
-    // Dodajte ovdje slične provjere za /teacher, /student, /parent...
     if (path.startsWith('/teacher') && role !== 'teacher') {
+      return NextResponse.redirect(new URL(`/${role || 'student'}`, request.url));
+    }
+    
+    if (path.startsWith('/student') && role !== 'student') {
+      return NextResponse.redirect(new URL(`/${role || 'student'}`, request.url));
+    }
+    
+    if (path.startsWith('/parent') && role !== 'parent') {
       return NextResponse.redirect(new URL(`/${role || 'student'}`, request.url));
     }
   }
