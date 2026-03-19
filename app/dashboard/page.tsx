@@ -9,37 +9,51 @@ export default function DashboardRedirect() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const checkSession = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      console.log("Session:", session);
-      
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+      if (event === 'SIGNED_IN' || event === 'INITIAL_SESSION') {
+        if (session?.user) {
+          const { data: profile, error: profileError } = await supabase
+            .from('profiles')
+            .select('role')
+            .eq('id', session.user.id)
+            .single();
+
+          if (profileError) {
+            console.error('Error fetching profile:', profileError);
+            router.push('/student');
+            return;
+          }
+
+          const role = profile?.role || 'student';
+          router.push(`/${role}`);
+        } else {
+          setLoading(false);
+        }
+      } else if (event === 'SIGNED_OUT') {
+        router.push('/');
+      }
+    });
+
+    // Also check immediately in case session is already active
+    supabase.auth.getSession().then(({ data: { session } }) => {
       if (session?.user) {
-        const { data: profile, error: profileError } = await supabase
+        supabase
           .from('profiles')
           .select('role')
           .eq('id', session.user.id)
-          .single();
-
-        console.log("Profile:", profile, "Error:", profileError);
-
-        if (profileError || !profile) {
-          console.error('Error fetching profile:', profileError);
-          // Ako ne nađe profil, pokušaj preusmjeriti na login
-          router.push('/');
-          return;
-        }
-
-        const role = profile.role;
-        console.log("Redirecting to:", `/${role}`);
-        router.push(`/${role}`);
+          .single()
+          .then(({ data: profile }) => {
+            const role = profile?.role || 'student';
+            router.push(`/${role}`);
+          });
       } else {
-        console.log("No session, redirecting to login");
-        router.push('/');
+        setLoading(false);
       }
-      setLoading(false);
-    };
+    });
 
-    checkSession();
+    return () => {
+      subscription.unsubscribe();
+    };
   }, [router]);
 
   if (loading) {
