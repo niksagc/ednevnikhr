@@ -31,16 +31,19 @@ export async function middleware(request: NextRequest) {
     }
   )
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
+  const { data: { user } } = await supabase.auth.getUser()
 
-  // 1. Ako nije prijavljen, preusmjeri na login (osim ako je već na login stranici)
-  if (!user && request.nextUrl.pathname !== '/') {
+  // Ako nije prijavljen, a pokušava pristupiti zaštićenoj ruti
+  if (!user && (
+    request.nextUrl.pathname.startsWith('/admin') ||
+    request.nextUrl.pathname.startsWith('/teacher') ||
+    request.nextUrl.pathname.startsWith('/student') ||
+    request.nextUrl.pathname.startsWith('/parent')
+  )) {
     return NextResponse.redirect(new URL('/', request.url))
   }
 
-  // 2. Ako je prijavljen, provjeri ulogu
+  // Ako je prijavljen, provjeri ulogu
   if (user) {
     const { data: profile } = await supabase
       .from('profiles')
@@ -51,16 +54,21 @@ export async function middleware(request: NextRequest) {
     const role = profile?.role;
     const path = request.nextUrl.pathname;
 
-    // Logika zaštite: Ako pokušava ući u admin, a nije admin -> preusmjeri ga na njegov dashboard
+    // Ako je na login stranici, a već je prijavljen, preusmjeri ga na dashboard
+    if (path === '/') {
+      return NextResponse.redirect(new URL(`/${role || 'student'}`, request.url));
+    }
+
+    // Logika zaštite ruta
     if (path.startsWith('/admin') && role !== 'admin') {
       return NextResponse.redirect(new URL(`/${role || 'student'}`, request.url));
     }
     
-    if (path.startsWith('/teacher') && role !== 'teacher') {
+    if (path.startsWith('/teacher') && role !== 'nastavnik') {
       return NextResponse.redirect(new URL(`/${role || 'student'}`, request.url));
     }
     
-    if (path.startsWith('/student') && role !== 'student') {
+    if (path.startsWith('/student') && role !== 'ucenik') {
       return NextResponse.redirect(new URL(`/${role || 'student'}`, request.url));
     }
     
@@ -72,7 +80,6 @@ export async function middleware(request: NextRequest) {
   return response
 }
 
-// Koje stranice middleware "prati"
 export const config = {
-  matcher: ['/admin/:path*', '/teacher/:path*', '/student/:path*', '/parent/:path*'],
+  matcher: ['/', '/admin/:path*', '/teacher/:path*', '/student/:path*', '/parent/:path*'],
 };
