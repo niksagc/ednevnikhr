@@ -51,6 +51,10 @@ export async function middleware(request: NextRequest) {
     const role = profile?.role;
     const path = request.nextUrl.pathname;
 
+    if (path === '/dashboard') {
+      return response;
+    }
+
     // Logika zaštite: Ako pokušava ući u admin, a nije admin -> preusmjeri ga na njegov dashboard
     if (path.startsWith('/admin') && role !== 'admin') {
       return NextResponse.redirect(new URL(`/${role || 'student'}`, request.url));
