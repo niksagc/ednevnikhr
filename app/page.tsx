@@ -20,15 +20,23 @@ export default function LoginPage() {
       return;
     }
 
-    const { error } = await supabase.auth.signInWithPassword({
+    const { data: authData, error } = await supabase.auth.signInWithPassword({
       email,
       password,
     });
 
     if (error) {
       setError(error.message);
-    } else {
-      router.push('/dashboard'); // Preusmjeri nakon uspješne prijave
+    } else if (authData.user) {
+      // Dohvati ulogu direktno ovdje
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('role')
+        .eq('id', authData.user.id)
+        .single();
+
+      const role = profile?.role || 'student';
+      router.push(`/${role}`);
     }
   };
 
