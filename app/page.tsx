@@ -12,27 +12,22 @@ export default function LoginPage() {
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    console.log("handleLogin called");
     setError('');
 
     // Provjera konfiguracije
     if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
-      console.error('Configuration error');
       setError('Aplikacija nije ispravno konfigurirana (nedostaju Supabase ključevi). Provjerite Vercel postavke.');
       return;
     }
 
-    console.log("Attempting sign in...");
     const { error } = await supabase.auth.signInWithPassword({
       email,
       password,
     });
 
     if (error) {
-      console.error("Sign in error:", error);
       setError(error.message);
     } else {
-      console.log("Sign in successful, redirecting...");
       router.push('/dashboard'); // Preusmjeri nakon uspješne prijave
     }
   };
